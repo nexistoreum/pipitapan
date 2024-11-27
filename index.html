@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>Unity WebGL Player | Test</title>
+    <link rel="shortcut icon" href="TemplateData/favicon.ico">
+    <link rel="stylesheet" href="TemplateData/style.css">
+    <style>
+      /* CSS สำหรับหน้าโหลด */
+      #loading-screen {
+        position: fixed;
+        width: 100%;
+        height: 100%;
+        background-color: #000;
+        color: #fff;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+        font-size: 24px;
+        flex-direction: column;
+      }
+
+      /* ซ่อนวิดีโอตอนเริ่มต้น */
+      #loading-video {
+        display: none;
+        width: 100vw;
+        height: 100vh;
+        object-fit: cover;
+        position: absolute;
+        top: 0;
+        left: 0;
+        z-index: 1;
+      }
+      /* #play-button {
+        display: none;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        padding: 20px 40px;
+        font-size: 20px;
+        background-color: #4CAF50;
+        color: white;
+        border: none;
+        cursor: pointer;
+        z-index: 9998;
+      } */
+      /* Button */
+      #play-button {
+        display: none; 
+        z-index: 2;
+        height: 50px;
+        margin: 5px;
+        width: 120px;
+        background: #333;
+        -webkit-box-pack: center;
+        -ms-flex-pack: center;
+        justify-content: center;
+        cursor: pointer;
+        -webkit-box-align: center;
+        -ms-flex-align: center;
+        align-items: center;
+        font-family: Consolas, Courier New, monospace;
+        border: solid #404c5d 1px;
+        font-size: 16px;
+        color: rgb(161, 161, 161);
+        -webkit-transition: 500ms;
+        transition: 500ms;
+        border-radius: 5px;
+        background: linear-gradient(145deg, #2e2d2d, #212121);
+        -webkit-box-shadow: -1px -5px 15px #41465b, 5px 5px 15px #41465b,
+          inset 5px 5px 10px #212121, inset -5px -5px 10px #212121;
+        box-shadow: -1px -5px 15px #41465b, 5px 5px 15px #41465b,
+          inset 5px 5px 10px #212121, inset -5px -5px 10px #212121;
+      }
+
+      #play-button:hover {
+        -webkit-box-shadow: 1px 1px 13px #20232e, -1px -1px 13px #545b78;
+        box-shadow: 1px 1px 13px #20232e, -1px -1px 13px #545b78;
+        color: #d6d6d6;
+        -webkit-transition: 500ms;
+        transition: 500ms;
+      }
+
+      #play-button:active {
+        -webkit-box-shadow: 1px 1px 13px #20232e, -1px -1px 33px #545b78;
+        box-shadow: 1px 1px 13px #20232e, -1px -1px 33px #545b78;
+        color: #d6d6d6;
+        -webkit-transition: 100ms;
+        transition: 100ms;
+      }
+      /* CSS สำหรับ ripple effect */
+      #container {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        display: flex;
+        gap: 0.625em;
+        transform: translate(-50%, -50%);
+      }
+
+      #container span {
+        border-radius: 50%;
+        height: 1.5em;
+        width: 1.5em;
+      }
+
+      #container span::before {
+        content: "";
+        display: block;
+        border-radius: inherit;
+        height: inherit;
+        width: inherit;
+        background-color: inherit;
+        animation: ripple 1.8s ease-out infinite;
+        animation-delay: inherit;
+        z-index: -1;
+      }
+
+      #container span:nth-of-type(1) {
+        background-color: #84cdfa;
+      }
+
+      #container span:nth-of-type(2) {
+        background-color: #5ad1cd;
+        animation-delay: 0.2s;
+      }
+
+      #container span:nth-of-type(3) {
+        background-color: #9b59b6;
+        animation-delay: 0.4s;
+      }
+
+      @keyframes ripple {
+        from {
+          opacity: 1;
+          transform: scale(0);
+        }
+
+        to {
+          opacity: 0;
+          transform: scale(3);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- หน้าโหลด -->
+    <div id="loading-screen">
+      <div id="container">
+        <span></span>
+        <span></span>
+        <span></span>
+      </div>
+      <video id="loading-video" autoplay loop muted>
+        <source src="TemplateData/5 second countdown with sound effect.mp4" type="video/mp4">
+      </video>
+      <button id="play-button">เล่นเกม</button>
+    </div>
+    
+    <!-- ตัวเกม Unity -->
+    <div id="unity-container" style="width: 100%; height: 100%;">
+      <canvas id="unity-canvas" width=auto height=auto tabindex="-1"></canvas>
+      <div id="unity-loading-bar">
+        <div id="unity-logo"></div>
+        <div id="unity-progress-bar-empty">
+          <div id="unity-progress-bar-full"></div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", function() {
+          var container = document.querySelector("#unity-container");
+          var canvas = document.querySelector("#unity-canvas");
+          var loadingBar = document.querySelector("#unity-loading-bar");
+          var progressBarFull = document.querySelector("#unity-progress-bar-full");
+          var fullscreenButton = document.querySelector("#unity-fullscreen-button");
+          var warningBanner = document.querySelector("#unity-warning");
+          var loadingScreen = document.querySelector("#loading-screen");
+          var loadingVideo = document.querySelector("#loading-video");
+          var playButton = document.querySelector("#play-button");
+
+          function unityShowBanner(msg, type) {
+            function updateBannerVisibility() {
+              warningBanner.style.display = warningBanner.children.length ? 'block' : 'none';
+            }
+            var div = document.createElement('div');
+            div.innerHTML = msg;
+            warningBanner.appendChild(div);
+            if (type == 'error') div.style = 'background: red; padding: 10px;';
+            else {
+              if (type == 'warning') div.style = 'background: yellow; padding: 10px;';
+              setTimeout(function() {
+                warningBanner.removeChild(div);
+                updateBannerVisibility();
+              }, 5000);
+            }
+            updateBannerVisibility();
+          }
+
+          var buildUrl = "Build";
+          var loaderUrl = buildUrl + "/gametest.loader.js";
+          var config = {
+            dataUrl: buildUrl + "/gametest.data",
+            frameworkUrl: buildUrl + "/gametest.framework.js",
+            codeUrl: buildUrl + "/gametest.wasm",
+            streamingAssetsUrl: "StreamingAssets",
+            companyName: "wugame",
+            productName: "Pipitapan",
+            productVersion: "0.1",
+            showBanner: unityShowBanner,
+          };
+
+          if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+            var meta = document.createElement('meta');
+            meta.name = 'viewport';
+            meta.content = 'width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes';
+            document.getElementsByTagName('head')[0].appendChild(meta);
+            container.className = "unity-mobile";
+            canvas.className = "unity-mobile";
+          } else {
+            canvas.style.width = "100%";
+            canvas.style.height = "100%";
+          }
+
+          loadingBar.style.display = "block";
+
+          // เริ่มเล่นวิดีโอหลังจาก 5 วินาที
+          setTimeout(function() {
+            loadingVideo.style.display = "block";
+            loadingVideo.play();
+          }, 5000);
+          playButton.onclick = function() {
+            loadingScreen.style.display = "none"; // ซ่อนหน้าโหลด
+            playButton.style.display = "none"; // ซ่อนปุ่มเล่นเกม
+          };
+
+          var script = document.createElement("script");
+          script.src = loaderUrl;
+          script.onload = () => {
+            createUnityInstance(canvas, config, (progress) => {
+              progressBarFull.style.width = 100 * progress + "%";
+            }).then((unityInstance) => {
+              loadingBar.style.display = "none";
+              if (fullscreenButton) {
+                fullscreenButton.onclick = () => {
+                  unityInstance.SetFullscreen(1);
+                };
+              } else {
+                console.error("Fullscreen button not found");
+              }
+              // ซ่อนหน้าโหลดหลังจากเกมโหลดเสร็จสิ้น
+              playButton.style.display = "block";
+              // loadingScreen.style.display = "none";
+            }).catch((message) => {
+              alert(message);
+            });
+          };
+
+          document.body.appendChild(script);
+      });
+
+    </script>
+  </body>
+</html>
